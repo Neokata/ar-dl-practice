@@ -8,6 +8,7 @@ export default function ResultsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [profile, setProfile] = useState<ReturnType<typeof getProfile> | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   const score = parseInt(searchParams.get('score') || '0');
   const total = parseInt(searchParams.get('total') || '25');
@@ -19,7 +20,17 @@ export default function ResultsContent() {
 
   useEffect(() => {
     setProfile(getProfile());
-  }, []);
+    // Confetti on pass
+    if (pct >= 80) {
+      setShowConfetti(true);
+      // Haptic celebration
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(pct === 100 ? [100, 50, 100, 50, 200] : [100, 50, 200]);
+      }
+      const timer = setTimeout(() => setShowConfetti(false), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [pct]);
 
   const passed = pct >= 80;
   const minutes = Math.floor(time / 60);
@@ -45,7 +56,10 @@ export default function ResultsContent() {
   };
 
   return (
-    <div className="min-h-screen grid-bg flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen grid-bg flex flex-col items-center justify-center p-4 relative">
+      {/* Confetti */}
+      {showConfetti && <Confetti />}
+
       <div className="max-w-md w-full space-y-6 animate-slide-up">
         <div className="text-center">
           <div className="text-8xl mb-4 animate-score-pop">{getGradeEmoji()}</div>
@@ -112,6 +126,9 @@ export default function ResultsContent() {
         )}
 
         <div className="space-y-3 pt-2">
+          <button onClick={() => router.push('/review')} className="btn-secondary w-full">
+            🔍 Review Wrong Answers
+          </button>
           <button onClick={() => router.push('/test')} className="btn-primary w-full">
             🚗 Take Another Test
           </button>
@@ -120,6 +137,46 @@ export default function ResultsContent() {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Simple confetti component
+function Confetti() {
+  const particles = Array.from({ length: 50 }, (_, i) => ({
+    id: i,
+    x: Math.random() * 100,
+    delay: Math.random() * 2,
+    duration: 2 + Math.random() * 2,
+    color: ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ec4899', '#f97316'][Math.floor(Math.random() * 6)],
+    size: 4 + Math.random() * 8,
+    rotation: Math.random() * 360,
+  }));
+
+  return (
+    <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
+      {particles.map((p) => (
+        <div
+          key={p.id}
+          className="absolute"
+          style={{
+            left: `${p.x}%`,
+            top: '-10px',
+            width: `${p.size}px`,
+            height: `${p.size}px`,
+            background: p.color,
+            borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+            transform: `rotate(${p.rotation}deg)`,
+            animation: `confetti-fall ${p.duration}s ${p.delay}s ease-in forwards`,
+          }}
+        />
+      ))}
+      <style>{`
+        @keyframes confetti-fall {
+          0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+          100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+      `}</style>
     </div>
   );
 }

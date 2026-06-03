@@ -154,7 +154,7 @@ export function checkAchievements(profile: UserProfile, testResult?: TestResult)
 
   // All categories
   const allCategories = Object.values(profile.categoryBest);
-  if (allCategories.length >= 8 && allCategories.every(p => p >= 80)) earn('all_categories');
+  if (Object.keys(profile.categoryBest).length >= 8 && allCategories.every(p => p >= 80)) earn('all_categories');
 
   // Time of day
   if (testResult) {

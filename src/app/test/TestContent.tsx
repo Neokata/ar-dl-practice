@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getRandomQuestions, getQuestionsByCategory, questions, categories, type Question, type CategoryKey } from '@/data/questions';
 import { getProfile, saveProfile, updateStreak, calculateXP, checkAchievements, type TestResult } from '@/lib/store';
 import { generateId } from '@/lib/utils';
 
-type QuizState = 'setup' | 'playing' | 'review';
+type QuizState = 'setup' | 'playing' | 'exiting';
 
 export default function TestContent() {
   const router = useRouter();
@@ -15,25 +15,61 @@ export default function TestContent() {
 
   const [state, setState] = useState<QuizState>('setup');
   const [quizQuestions, setQuizQuestions] = useState<Question[]>([]);
+  const [questionCount, setQuestionCount] = useState(25);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [showResult, setShowResult] = useState(false);
   const [startTime, setStartTime] = useState<number>(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const startTest = useCallback((category?: CategoryKey) => {
+  // Real-time timer
+  useEffect(() => {
+    if (state === 'playing') {
+      timerRef.current = setInterval(() => {
+        setElapsedSeconds(Math.round((Date.now() - startTime) / 1000));
+      }, 1000);
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [state, startTime]);
+
+  const formatTime = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
+  // Haptic feedback
+  const vibrateWrong = () => {
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(100);
+    }
+  };
+
+  const vibrateCorrect = () => {
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(50);
+    }
+  };
+
+  const startTest = useCallback((category?: CategoryKey, count?: number) => {
+    const numQ = count || questionCount;
     const qs = category
       ? getQuestionsByCategory(category)
-      : getRandomQuestions(25);
+      : getRandomQuestions(numQ);
     const shuffled = [...qs].sort(() => Math.random() - 0.5);
-    setQuizQuestions(shuffled.slice(0, Math.min(25, shuffled.length)));
+    setQuizQuestions(shuffled.slice(0, Math.min(numQ, shuffled.length)));
     setCurrentIndex(0);
     setSelectedAnswer(null);
     setAnswers({});
     setShowResult(false);
     setStartTime(Date.now());
+    setElapsedSeconds(0);
     setState('playing');
-  }, []);
+  }, [questionCount]);
 
   useEffect(() => {
     if (categoryParam && categories[categoryParam]) {
@@ -52,6 +88,12 @@ export default function TestContent() {
     if (!selectedAnswer) return;
     setAnswers(prev => ({ ...prev, [currentIndex]: selectedAnswer }));
     setShowResult(true);
+    // Haptic feedback
+    if (selectedAnswer === currentQuestion?.correct) {
+      vibrateCorrect();
+    } else {
+      vibrateWrong();
+    }
   };
 
   const handleNext = () => {
@@ -64,8 +106,27 @@ export default function TestContent() {
     }
   };
 
+  const handleExit = () => {
+    // If they've answered any questions, confirm
+    if (Object.keys(answers).length > 0) {
+      setState('exiting');
+    } else {
+      router.push('/');
+    }
+  };
+
+  const confirmExit = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    router.push('/');
+  };
+
+  const cancelExit = () => {
+    setState('playing');
+  };
+
   const finishTest = () => {
-    const duration = Math.round((Date.now() - startTime) / 1000);
+    if (timerRef.current) clearInterval(timerRef.current);
+    const duration = elapsedSeconds;
     let correct = 0;
     const categoryStats: Record<string, { correct: number; total: number }> = {};
 
@@ -112,6 +173,23 @@ export default function TestContent() {
 
     saveProfile(profile);
 
+    // Store full test data for review page
+    const testData = {
+      questions: quizQuestions.map((q, i) => ({
+        id: q.id,
+        question: q.question,
+        options: q.options,
+        correct: q.correct,
+        userAnswer: answers[i] || '',
+        category: q.category,
+        explanation: q.explanation,
+      })),
+      result,
+      xp,
+      newAchievements,
+    };
+    sessionStorage.setItem('lastTest', JSON.stringify(testData));
+
     const params = new URLSearchParams({
       score: correct.toString(),
       total: total.toString(),
@@ -130,7 +208,34 @@ export default function TestContent() {
           <div className="text-center">
             <div className="text-6xl mb-4">🚗</div>
             <h1 className="text-3xl font-bold glow-text-purple mb-2">Practice Test</h1>
-            <p style={{ color: 'var(--text-secondary)' }}>25 random questions • No time limit</p>
+            <p style={{ color: 'var(--text-secondary)' }}>Random questions • No time limit</p>
+          </div>
+
+          {/* Question count selector */}
+          <div className="card p-4">
+            <div className="text-xs uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>How many questions?</div>
+            <div className="flex gap-2">
+              {[10, 15, 25].map((count) => (
+                <button
+                  key={count}
+                  onClick={() => setQuestionCount(count)}
+                  className="flex-1 py-3 rounded-xl text-lg font-bold transition-all"
+                  style={{
+                    background: questionCount === count ? 'linear-gradient(135deg, var(--accent-purple), var(--accent-cyan))' : 'var(--bg-secondary)',
+                    color: questionCount === count ? 'white' : 'var(--text-muted)',
+                    border: questionCount === count ? 'none' : '1px solid var(--border)',
+                    boxShadow: questionCount === count ? '0 0 15px rgba(139,92,246,0.3)' : 'none',
+                  }}
+                >
+                  {count}
+                </button>
+              ))}
+            </div>
+            <div className="flex justify-between text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
+              <span>Quick</span>
+              <span>Standard</span>
+              <span>Full</span>
+            </div>
           </div>
 
           <div className="space-y-4">
@@ -174,20 +279,38 @@ export default function TestContent() {
 
   return (
     <div className="min-h-screen grid-bg flex flex-col">
+      {/* Exit confirmation overlay */}
+      {state === 'exiting' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
+          <div className="card p-6 max-w-sm w-full animate-slide-up" style={{ borderColor: 'var(--accent-pink)' }}>
+            <div className="text-center">
+              <div className="text-4xl mb-3">⚠️</div>
+              <h2 className="text-xl font-bold mb-2">Leave Test?</h2>
+              <p className="text-sm mb-5" style={{ color: 'var(--text-secondary)' }}>
+                You&apos;ve answered {Object.keys(answers).length} of {quizQuestions.length} questions. Your progress will be lost.
+              </p>
+              <div className="flex gap-3">
+                <button onClick={cancelExit} className="btn-secondary flex-1">
+                  Keep Going
+                </button>
+                <button onClick={confirmExit} className="flex-1 py-3 px-4 rounded-xl font-bold text-white" style={{ background: 'var(--accent-pink)' }}>
+                  Leave
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <header className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
-        <button onClick={() => router.push('/')} className="text-sm" style={{ color: 'var(--text-muted)' }}>
+        <button onClick={handleExit} className="text-sm" style={{ color: 'var(--text-muted)' }}>
           ✕ Exit
         </button>
         <div className="text-sm font-medium">
           {currentIndex + 1} / {quizQuestions.length}
         </div>
-        <div className="text-sm" style={{ color: 'var(--accent-cyan)' }}>
-          {(() => {
-            const elapsed = Math.round((Date.now() - startTime) / 1000);
-            const mins = Math.floor(elapsed / 60);
-            const secs = elapsed % 60;
-            return `${mins}:${secs.toString().padStart(2, '0')}`;
-          })()}
+        <div className="text-sm font-mono" style={{ color: 'var(--accent-cyan)' }}>
+          {formatTime(elapsedSeconds)}
         </div>
       </header>
 
