@@ -127,6 +127,12 @@ export default function HomePage() {
           </button>
         </Link>
 
+        <Link href="/study" className="block">
+          <button className="btn-secondary w-full text-lg py-4">
+            📚 Study Mode (Flashcards)
+          </button>
+        </Link>
+
         {/* Category Quick Stats */}
         <div>
           <h2 className="text-sm font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>Categories</h2>
