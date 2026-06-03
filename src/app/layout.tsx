@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import UpdateBanner from "@/components/UpdateBanner";
+import LevelUpOverlay from "@/components/LevelUpOverlay";
+import OnboardingOverlay from "@/components/OnboardingOverlay";
 import "./globals.css";
 
 const inter = Inter({
@@ -40,6 +42,8 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-[#0a0a12] text-[#e2e8f0]">
         {children}
         <UpdateBanner />
+        <LevelUpOverlay />
+        <OnboardingOverlay />
       </body>
     </html>
   );

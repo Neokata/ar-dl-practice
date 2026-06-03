@@ -211,9 +211,18 @@ export const questions: Question[] = [
   { id: 150, question: 'A single solid white line across your lane means:', options: [{ letter: 'A', text: 'Speed up' }, { letter: 'B', text: 'Stop at the line' }, { letter: 'C', text: 'Yield' }, { letter: 'D', text: 'Proceed with caution' }], correct: 'B', category: 'signs', explanation: 'A solid white line across your lane is a stop line — stop before it at a stop sign or red light.' },
 ];
 
+// Fisher-Yates shuffle — unbiased random permutation
+export function shuffleArray<T>(array: T[]): T[] {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 export function getRandomQuestions(count: number = 25): Question[] {
-  const shuffled = [...questions].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, count);
+  return shuffleArray(questions).slice(0, count);
 }
 
 export function getQuestionsByCategory(category: CategoryKey): Question[] {

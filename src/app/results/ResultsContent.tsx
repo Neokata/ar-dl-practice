@@ -3,12 +3,14 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getProfile, getCurrentLevel, ACHIEVEMENTS, LEVELS } from '@/lib/store';
+import { categories, type CategoryKey } from '@/data/questions';
 
 export default function ResultsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [profile, setProfile] = useState<ReturnType<typeof getProfile> | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [weakCategories, setWeakCategories] = useState<{ key: CategoryKey; pct: number }[]>([]);
 
   const score = parseInt(searchParams.get('score') || '0');
   const total = parseInt(searchParams.get('total') || '25');
@@ -23,7 +25,6 @@ export default function ResultsContent() {
     // Confetti on pass
     if (pct >= 80) {
       setShowConfetti(true);
-      // Haptic celebration
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         navigator.vibrate(pct === 100 ? [100, 50, 100, 50, 200] : [100, 50, 200]);
       }
@@ -31,6 +32,34 @@ export default function ResultsContent() {
       return () => clearTimeout(timer);
     }
   }, [pct]);
+
+  // Find weak categories from test data
+  useEffect(() => {
+    try {
+      const data = sessionStorage.getItem('lastTest');
+      if (data) {
+        const parsed = JSON.parse(data);
+        const weak: { key: CategoryKey; pct: number }[] = [];
+        if (parsed.questions) {
+          // Group by category and find weak ones
+          const catMap: Record<string, { correct: number; total: number }> = {};
+          parsed.questions.forEach((q: { category: string; correct: string; userAnswer: string }) => {
+            if (!catMap[q.category]) catMap[q.category] = { correct: 0, total: 0 };
+            catMap[q.category].total++;
+            if (q.userAnswer === q.correct) catMap[q.category].correct++;
+          });
+          Object.entries(catMap).forEach(([cat, stats]) => {
+            const pct = Math.round((stats.correct / stats.total) * 100);
+            if (pct < 80 && categories[cat as CategoryKey]) {
+              weak.push({ key: cat as CategoryKey, pct });
+            }
+          });
+          weak.sort((a, b) => a.pct - b.pct);
+          setWeakCategories(weak.slice(0, 3)); // Top 3 weak categories
+        }
+      }
+    } catch { /* empty */ }
+  }, []);
 
   const passed = pct >= 80;
   const minutes = Math.floor(time / 60);
@@ -122,6 +151,37 @@ export default function ResultsContent() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Weak categories suggestion */}
+        {weakCategories.length > 0 && (
+          <div className="card p-4">
+            <div className="text-sm font-semibold mb-3" style={{ color: 'var(--accent-pink)' }}>
+              📝 Areas to Improve
+            </div>
+            <div className="space-y-2">
+              {weakCategories.map(({ key, pct }) => {
+                const cat = categories[key];
+                return (
+                  <button key={key} onClick={() => router.push(`/study?category=${key}`)}
+                    className="w-full text-left p-3 rounded-xl flex items-center justify-between" style={{
+                      background: 'var(--bg-secondary)', border: '1px solid var(--border)',
+                    }}>
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">{cat.icon}</span>
+                      <div>
+                        <div className="text-sm font-medium">{cat.name}</div>
+                        <div className="text-xs" style={{ color: pct >= 60 ? 'var(--accent-yellow)' : 'var(--accent-pink)' }}>{pct}%</div>
+                      </div>
+                    </div>
+                    <span className="text-xs px-2 py-1 rounded-full" style={{ background: 'rgba(139,92,246,0.2)', color: 'var(--accent-purple)' }}>
+                      Study →
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 

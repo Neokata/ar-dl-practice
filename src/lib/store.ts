@@ -86,7 +86,21 @@ export function getProfile(): UserProfile {
 }
 
 export function saveProfile(profile: UserProfile): void {
+  // Check for level-up before saving
+  const oldProfile = getProfile();
+  const oldLevel = getCurrentLevel(oldProfile.xp);
+  const newLevel = getCurrentLevel(profile.xp);
+
   localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+
+  // If user leveled up, trigger the overlay
+  if (newLevel.levelIndex > oldLevel.levelIndex) {
+    try {
+      localStorage.setItem('ar-dl-level-up', JSON.stringify({ levelIndex: newLevel.levelIndex }));
+      // Dispatch storage event so other tabs/timing picks it up
+      window.dispatchEvent(new StorageEvent('storage', { key: 'ar-dl-level-up' }));
+    } catch { /* empty */ }
+  }
 }
 
 export function getCurrentLevel(xp: number) {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { getRandomQuestions, getQuestionsByCategory, questions, categories, type Question, type CategoryKey } from '@/data/questions';
+import { getRandomQuestions, getQuestionsByCategory, questions, categories, shuffleArray, type Question, type CategoryKey } from '@/data/questions';
 import { getProfile, saveProfile, updateStreak, calculateXP, checkAchievements, type TestResult } from '@/lib/store';
 import { generateId } from '@/lib/utils';
 
@@ -33,7 +33,7 @@ export default function TestContent() {
   const startTest = useCallback((category?: CategoryKey, count?: number) => {
     const numQ = count || questionCount;
     const qs = category ? getQuestionsByCategory(category) : getRandomQuestions(numQ);
-    const shuffled = [...qs].sort(() => Math.random() - 0.5);
+    const shuffled = shuffleArray(qs);
     setQuizQuestions(shuffled.slice(0, Math.min(numQ, shuffled.length)));
     setCurrentIndex(0);
     setSelectedAnswer(null);
