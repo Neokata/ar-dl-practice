@@ -161,6 +161,9 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-height: 56px;
+  width: 100%;
+  text-align: left;
 }
 .answer-option:hover {
   border-color: var(--accent-purple);

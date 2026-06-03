@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { getProfile, getCurrentLevel, LEVELS, ACHIEVEMENTS, type UserProfile } from '@/lib/store';
-import { categories, type CategoryKey } from '@/data/questions';
+import { getProfile, getCurrentLevel, LEVELS, type UserProfile } from '@/lib/store';
 
 export default function HomePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -30,7 +29,6 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen grid-bg pb-8">
-      {/* Header */}
       <header className="px-4 pt-6 pb-4">
         <div className="max-w-lg mx-auto flex items-center justify-between">
           <div>
@@ -120,44 +118,18 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Start Practice Test Button */}
+        {/* Main Action Buttons */}
         <Link href="/test" className="block">
           <button className="btn-primary w-full text-lg py-4">
-            🚗 Start Practice Test
+            🚗 Practice Test
           </button>
         </Link>
 
         <Link href="/study" className="block">
           <button className="btn-secondary w-full text-lg py-4">
-            📚 Study Mode (Flashcards)
+            📚 Study Mode
           </button>
         </Link>
-
-        {/* Category Quick Stats */}
-        <div>
-          <h2 className="text-sm font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>Categories</h2>
-          <div className="grid grid-cols-2 gap-2">
-            {(Object.keys(categories) as CategoryKey[]).map((key) => {
-              const cat = categories[key];
-              const best = profile.categoryBest[key];
-              return (
-                <Link href={`/test?category=${key}`} key={key} className="card p-3 flex items-center gap-2">
-                  <span className="text-lg">{cat.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">{cat.name}</div>
-                    {best !== undefined ? (
-                      <div className="text-xs" style={{ color: best >= 80 ? 'var(--accent-green)' : best >= 60 ? 'var(--accent-yellow)' : 'var(--accent-pink)' }}>
-                        Best: {best}%
-                      </div>
-                    ) : (
-                      <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Not tested</div>
-                    )}
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
 
         {/* Recent Results */}
         {profile.testHistory.length > 0 && (

@@ -3,8 +3,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getRandomQuestions, getQuestionsByCategory, questions, categories, type Question, type CategoryKey } from '@/data/questions';
-import { signQuestionVisuals } from '@/components/RoadSigns';
-import React from 'react';
 
 type StudyMode = 'all' | 'category' | 'weak' | 'missed';
 
@@ -170,13 +168,6 @@ export default function StudyPage() {
                   {categories[currentCard.category as CategoryKey]?.icon} {categories[currentCard.category as CategoryKey]?.name}
                 </span>
               </div>
-
-              {/* Visual sign if available */}
-              {signQuestionVisuals[currentCard.id] && !flipped && (
-                <div className="flex justify-center mb-4">
-                  {React.createElement(signQuestionVisuals[currentCard.id], { size: 90 })}
-                </div>
-              )}
 
               {!flipped ? (
                 <>

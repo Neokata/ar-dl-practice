@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getRandomQuestions, getQuestionsByCategory, questions, categories, type Question, type CategoryKey } from '@/data/questions';
 import { getProfile, saveProfile, updateStreak, calculateXP, checkAchievements, type TestResult } from '@/lib/store';
 import { generateId } from '@/lib/utils';
-import { signQuestionVisuals } from '@/components/RoadSigns';
 
 type QuizState = 'setup' | 'playing' | 'exiting';
 
@@ -228,12 +227,6 @@ export default function TestContent() {
                 </span>
               </div>
 
-              {/* Visual road sign for sign questions */}
-              {currentQuestion && signQuestionVisuals[currentQuestion.id] && (
-                <div className="flex justify-center mb-4">
-                  {React.createElement(signQuestionVisuals[currentQuestion.id], { size: 90 })}
-                </div>
-              )}
               <h2 className="text-xl font-semibold mb-6 leading-relaxed">{currentQuestion.question}</h2>
               <div className="space-y-3">
                 {currentQuestion.options.map((option) => {
